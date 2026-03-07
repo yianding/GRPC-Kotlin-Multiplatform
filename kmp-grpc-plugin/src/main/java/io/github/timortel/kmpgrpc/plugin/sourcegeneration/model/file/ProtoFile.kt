@@ -1,9 +1,11 @@
 package io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.file
 
 import com.squareup.kotlinpoet.ClassName
-import io.github.timortel.kmpgrpc.plugin.sourcegeneration.CompilationException
+import dev.turingcomplete.textcaseconverter.StandardTextCases
+import dev.turingcomplete.textcaseconverter.TextCase
+import io.github.timortel.kmpgrpc.plugin.NamingStrategy
 import io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.*
-import io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.declaration.ProtoDeclaration
+import io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.declaration.ProtoStructureDeclaration
 import io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.declaration.ProtoEnum
 import io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.declaration.ProtoMessage
 import io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.option.OptionTarget
@@ -26,7 +28,7 @@ data class ProtoFile(
     val imports: List<ProtoImport>,
     override val extensionDefinitions: List<ProtoExtensionDefinition>
 ) : FileBasedDeclarationResolver, ProtoOptionsHolder, ProtoVisibilityHolder, ProtoExtensionDefinitionHolder,
-    ProtoExtensionDefinitionFinder {
+    ProtoExtensionDefinitionFinder, SourceCodeNamedNode {
     lateinit var folder: ProtoFolder
     lateinit var protoPackage: ProtoPackage
 
@@ -51,31 +53,44 @@ data class ProtoFile(
     override val candidates: List<DeclarationResolver.Candidate> =
         messages.map { DeclarationResolver.Candidate.Message(it) } + enums.map { DeclarationResolver.Candidate.Enum(it) }
 
-    val importedFiles: List<ProtoFile>
-        get() = imports.map { import ->
-            project.rootFolder.resolveImport(import.path)
-                ?: throw CompilationException.UnresolvedImport(
-                    "Unable to resolve import ${import.identifier}",
-                    this,
-                    import.ctx
-                )
-        }
-
     val javaPackage: String
         get() {
             return Options.Basic.javaPackage.get(this) ?: `package`.orEmpty()
         }
 
-    val javaFileName: String
-        get() {
-            return Options.Basic.javaOuterClassName.get(this) ?: fileNameWithoutExtension.snakeCaseToCamelCase()
-        }
+    override val name: String get() = Options.Basic.javaOuterClassName.get(this) ?: when (project.namingStrategy) {
+        NamingStrategy.LEGACY -> fileNameWithoutExtension.snakeCaseToCamelCase()
+        NamingStrategy.PROTO_LITERAL, NamingStrategy.KOTLIN_IDIOMATIC -> fileNameWithoutExtension
+    }
 
-    val className: ClassName get() = ClassName(javaPackage, javaFileName)
+    override val codeName: String by lazy {
+        super.codeName
+    }
+
+    val className: ClassName get() = ClassName(javaPackage, codeName)
 
     override val optionTarget: OptionTarget = OptionTarget.FILE
 
     override val parentOptionsHolder: ProtoOptionsHolder? = null
+
+    val topLevelDeclarations: List<SourceCodeNamedNode> = messages + enums + services + extensionDefinitions.flatMap { it.fields }
+
+    val declarationCodeNameResolver = object : CodeNameResolver {
+        override val reservedNames: Set<String> = emptySet()
+
+        override val consideredNodes: List<SourceCodeNamedNode> = topLevelDeclarations
+
+        override val conflictResolutionStrategy: CodeNameResolver.ConflictResolutionStrategy
+            get() = CodeNameResolver.ConflictResolutionStrategy.appendNumber
+    }
+
+    override val kotlinIdiomaticTextCase: TextCase
+        get() = StandardTextCases.PASCAL_CASE
+
+    override val codeNameResolver: CodeNameResolver
+        get() = project.getCodeNameResolverForKotlinPackage(javaPackage)
+
+    val dslFile = DslFile(this)
 
     init {
         val parent = ProtoDeclParent.File(this)
@@ -87,7 +102,7 @@ data class ProtoFile(
         extensionDefinitions.forEach { it.parent = ProtoExtensionDefinition.Parent.File(this) }
     }
 
-    override fun resolveDeclarationInParent(type: ProtoType.DefType): ProtoDeclaration? {
+    override fun resolveDeclarationInParent(type: ProtoType.DefType): ProtoStructureDeclaration? {
         return protoPackage.resolveDeclaration(type)
     }
 
@@ -100,5 +115,20 @@ data class ProtoFile(
         enums.forEach { it.validate() }
         services.forEach { it.validate() }
         imports.forEach { it.validate() }
+    }
+
+    class DslFile(val file: ProtoFile) : SourceCodeNamedNode {
+        override val project: ProtoProject
+            get() = file.project
+
+        override val kotlinIdiomaticTextCase: TextCase = StandardTextCases.PASCAL_CASE
+
+        override val name: String get() = file.name
+        override val desiredCodeName: String get() = "${name}Dsl"
+
+        override val codeNameResolver: CodeNameResolver
+            get() = file.codeNameResolver
+
+        val className get() = ClassName(file.javaPackage, codeName)
     }
 }

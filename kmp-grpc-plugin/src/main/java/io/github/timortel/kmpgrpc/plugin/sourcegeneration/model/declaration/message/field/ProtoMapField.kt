@@ -3,10 +3,12 @@ package io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.declaration.mes
 import com.squareup.kotlinpoet.MAP
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
+import io.github.timortel.kmpgrpc.plugin.NamingStrategy
 import io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.DeclarationResolver
 import io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.file.ProtoFile
 import io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.ProtoOption
 import io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.ProtoOptionsHolder
+import io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.ProtoProject
 import io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.type.ProtoType
 import io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.declaration.ProtoMessage
 import io.github.timortel.kmpgrpc.plugin.sourcegeneration.model.declaration.message.ProtoMessageProperty
@@ -29,7 +31,16 @@ data class ProtoMapField(
 
     override val file: ProtoFile get() = message.file
 
-    override val desiredAttributeName: String = "${name}Map"
+    override val project: ProtoProject
+        get() = file.project
+
+
+    override val desiredCodeName: String
+        get() = when (project.namingStrategy) {
+            NamingStrategy.PROTO_LITERAL -> transformedKotlinName
+            NamingStrategy.LEGACY -> "${transformedKotlinName}Map"
+            NamingStrategy.KOTLIN_IDIOMATIC -> if (transformedKotlinName.endsWith("Map")) transformedKotlinName else "${transformedKotlinName}Map"
+        }
 
     override val propertyType: TypeName
         get() = MAP.parameterizedBy(keyType.resolve(), valuesType.resolve())

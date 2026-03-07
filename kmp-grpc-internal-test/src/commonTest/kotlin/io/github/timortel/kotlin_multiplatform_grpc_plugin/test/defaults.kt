@@ -30,7 +30,7 @@ fun createMessageWithAllTypes() = messageWithEverything {
     field4 = 25L
     field5 = 3f
     field6 = 7.0
-    field7 = SimpleEnum.ONE
+    field7 = SimpleEnum.One
     field8 = simpleMessage { field1 = "Foo" }
 
     field9List += listOf("Foo", "Bar", "Baz")
@@ -39,11 +39,11 @@ fun createMessageWithAllTypes() = messageWithEverything {
     field12List += listOf(12L, 23424L, 10312313L, -123131L)
     field13List += listOf(-1f, 2f, 2.5f, -0.5f)
     field14List += listOf(-0.5, 15.0)
-    field15List += listOf(SimpleEnum.ZERO, SimpleEnum.ZERO, SimpleEnum.ONE, SimpleEnum.TWO)
+    field15List += listOf(SimpleEnum.Zero, SimpleEnum.Zero, SimpleEnum.One, SimpleEnum.Two)
 
     field16Map += mapOf("foo" to 1, "bar" to -13, "baz" to 112)
     field17Map += mapOf(1 to simpleMessage { field1 = "Foo" }, 13 to simpleMessage { field1 = "Baz" })
-    field18Map += mapOf(-15 to SimpleEnum.ONE, 23 to SimpleEnum.TWO)
+    field18Map += mapOf(-15 to SimpleEnum.One, 23 to SimpleEnum.Two)
 
     field19 = 12u
     field20 = 14uL
@@ -74,16 +74,16 @@ fun createMessageWithAllExtensions() = ExtensionsTest.MessageWithEveryExtension(
         set(ExtensionsTest.field4, 25L)
         set(ExtensionsTest.field5, 3f)
         set(ExtensionsTest.field6, 7.0)
-        set(ExtensionsTest.field7, SimpleEnum.ONE)
+        set(ExtensionsTest.field7, SimpleEnum.One)
         set(ExtensionsTest.field8, simpleMessage { field1 = "Foo" })
 
-        set(ExtensionsTest.field9, listOf("Foo", "Bar", "Baz"))
-        set(ExtensionsTest.field10, listOf(true, false, true, true))
-        set(ExtensionsTest.field11, listOf(1, 2, 3, 4, -12, 1341))
-        set(ExtensionsTest.field12, listOf(12L, 23424L, 10312313L, -123131L))
-        set(ExtensionsTest.field13, listOf(-1f, 2f, 2.5f, -0.5f))
-        set(ExtensionsTest.field14, listOf(-0.5, 15.0))
-        set(ExtensionsTest.field15, listOf(SimpleEnum.ZERO, SimpleEnum.ZERO, SimpleEnum.ONE, SimpleEnum.TWO))
+        set(ExtensionsTest.field9List, listOf("Foo", "Bar", "Baz"))
+        set(ExtensionsTest.field10List, listOf(true, false, true, true))
+        set(ExtensionsTest.field11List, listOf(1, 2, 3, 4, -12, 1341))
+        set(ExtensionsTest.field12List, listOf(12L, 23424L, 10312313L, -123131L))
+        set(ExtensionsTest.field13List, listOf(-1f, 2f, 2.5f, -0.5f))
+        set(ExtensionsTest.field14List, listOf(-0.5, 15.0))
+        set(ExtensionsTest.field15List, listOf(SimpleEnum.Zero, SimpleEnum.Zero, SimpleEnum.One, SimpleEnum.Two))
 
         set(ExtensionsTest.field19, 12u)
         set(ExtensionsTest.field20, 14uL)
@@ -95,16 +95,16 @@ fun createMessageWithAllExtensions() = ExtensionsTest.MessageWithEveryExtension(
         set(ExtensionsTest.field26, -1353532131L)
         set(ExtensionsTest.field27, byteArrayOf(0, -13, 127))
 
-        set(ExtensionsTest.field28, listOf(0u, 134u, 35311u))
-        set(ExtensionsTest.field29, listOf(0uL, 134uL, 353111345134uL))
-        set(ExtensionsTest.field30, listOf(-134, -145129, 34521431))
-        set(ExtensionsTest.field31, listOf(-1L, 141341413413L, -134134314131L))
-        set(ExtensionsTest.field32, listOf(0u, 14234u, 1413413413u))
-        set(ExtensionsTest.field33, listOf(0uL, 134uL, 353111345134uL))
-        set(ExtensionsTest.field34, listOf(-14, 0, 1241522))
-        set(ExtensionsTest.field35, listOf(-154L, 0L, 4514124121L))
+        set(ExtensionsTest.field28List, listOf(0u, 134u, 35311u))
+        set(ExtensionsTest.field29List, listOf(0uL, 134uL, 353111345134uL))
+        set(ExtensionsTest.field30List, listOf(-134, -145129, 34521431))
+        set(ExtensionsTest.field31List, listOf(-1L, 141341413413L, -134134314131L))
+        set(ExtensionsTest.field32List, listOf(0u, 14234u, 1413413413u))
+        set(ExtensionsTest.field33List, listOf(0uL, 134uL, 353111345134uL))
+        set(ExtensionsTest.field34List, listOf(-14, 0, 1241522))
+        set(ExtensionsTest.field35List, listOf(-154L, 0L, 4514124121L))
         set(
-            ExtensionsTest.field36, listOf(
+            ExtensionsTest.field36List, listOf(
                 byteArrayOf(0, -127, 127),
                 byteArrayOf(-123, 1, 2),
                 byteArrayOf(3, 3, -6)
