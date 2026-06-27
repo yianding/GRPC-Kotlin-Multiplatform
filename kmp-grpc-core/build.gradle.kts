@@ -89,7 +89,6 @@ kotlin {
             dependencies {
                 api(libs.grpc.stub)
                 api(libs.grpc.kotlin.stub)
-                implementation(libs.grpc.netty)
             }
         }
 
@@ -106,15 +105,20 @@ kotlin {
 
             dependencies {
                 api(libs.grpc.api)
+                implementation(libs.grpc.netty)
             }
         }
 
         jvmTest {
             dependsOn(nativeJvmTest)
-        }
 
         androidMain {
             dependsOn(androidJvmCommon)
+
+            dependencies {
+                implementation(libs.grpc.okhttp)
+            }
+        }
         }
 
         nativeMain {
