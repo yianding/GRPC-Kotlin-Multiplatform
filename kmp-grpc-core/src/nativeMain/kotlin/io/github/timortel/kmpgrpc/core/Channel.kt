@@ -35,7 +35,9 @@ actual class Channel private constructor(
     internal val channel: CPointer<cnames.structs.RustChannel>?
 
     init {
-        val host = (if (usePlaintext) "http://" else "https://") + "$name:$port"
+        // Wrap IPv6 addresses in brackets for RFC-compliant URI format
+        val hostName = if (name.contains(':') && !name.startsWith('[') && !name.endsWith(']')) "[$name]" else name
+        val host = (if (usePlaintext) "http://" else "https://") + "$hostName:$port"
 
         val enableKeepalive = when (keepAliveConfig) {
             is KeepAliveConfig.Enabled -> true

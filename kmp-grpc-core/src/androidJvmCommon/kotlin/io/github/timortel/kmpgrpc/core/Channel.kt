@@ -3,13 +3,13 @@ package io.github.timortel.kmpgrpc.core
 import io.github.timortel.kmpgrpc.core.config.KeepAliveConfig
 import io.github.timortel.kmpgrpc.core.internal.ClientInterceptorImpl
 import io.github.timortel.kmpgrpc.core.internal.buildClientIdentityKeyManager
-import io.github.timortel.kmpgrpc.core.internal.buildSslSocketFactory
+import io.github.timortel.kmpgrpc.core.internal.buildTrustManager
 import io.grpc.ManagedChannel
-import io.grpc.okhttp.OkHttpChannelBuilder
+import io.grpc.netty.GrpcSslContexts
+import io.grpc.netty.NettyChannelBuilder
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.KeyManager
-import javax.net.ssl.SSLSocketFactory
 import kotlin.concurrent.thread
 import kotlin.coroutines.resume
 
@@ -17,11 +17,10 @@ import kotlin.coroutines.resume
  * The Jvm [Channel] wraps the grpc [ManagedChannel] and delegates its operations to the wrapped native channel.
  */
 actual class Channel private constructor(val channel: ManagedChannel) {
-    actual class Builder(private val impl: OkHttpChannelBuilder) {
+    actual class Builder(private val impl: NettyChannelBuilder) {
 
         private val trustedCertificates: MutableList<Certificate> = mutableListOf()
         private var trustOnlyProvidedCertificates = false
-        private var customSslSocketFactory: SSLSocketFactory? = null
         private var usePlaintext: Boolean = false
         private var keyManagers: Array<KeyManager>? = null
 
@@ -30,7 +29,7 @@ actual class Channel private constructor(val channel: ManagedChannel) {
                 name: String,
                 port: Int
             ): Builder {
-                return Builder(OkHttpChannelBuilder.forAddress(name, port))
+                return Builder(NettyChannelBuilder.forAddress(name, port))
             }
         }
 
@@ -71,26 +70,23 @@ actual class Channel private constructor(val channel: ManagedChannel) {
             trustOnlyProvidedCertificates = true
         }
 
-        /**
-         * Configure channel to use the provided [SSLSocketFactory]. Calling this function ignores the values set by [withTrustedCertificates].
-         */
-        fun useSslSocketFactory(sslSocketFactory: SSLSocketFactory): Builder = apply {
-            customSslSocketFactory = sslSocketFactory
-        }
-
         actual fun withClientIdentity(certificate: Certificate, key: PrivateKey): Builder = apply {
             keyManagers = buildClientIdentityKeyManager(certificate, key)
         }
 
         actual fun build(): Channel {
             if (!usePlaintext) {
-                impl.sslSocketFactory(
-                    customSslSocketFactory ?: buildSslSocketFactory(
-                        certificates = trustedCertificates,
-                        useDefaultTrustManager = !trustOnlyProvidedCertificates,
-                        keyManagers = keyManagers
-                    )
-                )
+                val sslCtxBuilder = GrpcSslContexts.forClient()
+                val trustManager = buildTrustManager(trustedCertificates, !trustOnlyProvidedCertificates)
+                if (trustManager != null) {
+                    sslCtxBuilder.trustManager(trustManager)
+                }
+                keyManagers?.let { kms ->
+                    if (kms.isNotEmpty()) {
+                        sslCtxBuilder.keyManager(kms[0])
+                    }
+                }
+                impl.sslContext(sslCtxBuilder.build())
             }
 
             return Channel(impl.build())

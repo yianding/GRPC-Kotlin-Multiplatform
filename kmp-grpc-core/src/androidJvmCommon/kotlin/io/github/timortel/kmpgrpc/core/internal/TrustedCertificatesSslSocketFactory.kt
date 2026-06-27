@@ -99,6 +99,25 @@ private fun getDefaultTrustManager(): X509TrustManager {
     return tmf.trustManagers.filterIsInstance<X509TrustManager>().first()
 }
 
+/**
+ * Build a TrustManager based on the given certificate and trust configuration.
+ * Returns null if no trust configuration is needed (not plaintext, no certs, full default trust).
+ */
+internal fun buildTrustManager(
+    certificates: List<Certificate>,
+    useDefaultTrustManager: Boolean
+): X509TrustManager? {
+    return when {
+        certificates.isNotEmpty() && useDefaultTrustManager -> CombinedTrustManager(
+            trustedCertificatesTrustManager = buildTrustedCertificatesTrustManager(certificates),
+            defaultTrustManager = getDefaultTrustManager()
+        )
+        certificates.isNotEmpty() -> buildTrustedCertificatesTrustManager(certificates)
+        useDefaultTrustManager -> getDefaultTrustManager()
+        else -> null
+    }
+}
+
 internal fun buildClientIdentityKeyManager(cert: Certificate, key: PrivateKey): Array<KeyManager> {
     val keySpec = PKCS8EncodedKeySpec(key.data)
     val key = availableAlgorithms.asSequence().mapNotNull { algorithm ->
