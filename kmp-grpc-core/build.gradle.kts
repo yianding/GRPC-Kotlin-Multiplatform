@@ -154,6 +154,14 @@ publishing {
             name = "BuildDir"
             url = uri(layout.buildDirectory.dir("repos/releases"))
         }
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/yianding/GRPC-Kotlin-Multiplatform")
+            credentials {
+                username = findProperty("gpr.user") as? String ?: System.getenv("GITHUB_ACTOR")
+                password = findProperty("gpr.key") as? String ?: System.getenv("GITHUB_TOKEN")
+            }
+        }
     }
 
     if (publications.findByName("jvm") != null) {
