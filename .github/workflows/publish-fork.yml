@@ -93,9 +93,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # androidDebug conflicts with already-published artifacts (409)
           ./gradlew publishAllPublicationsToGitHubPackagesRepository \
             -Pversion="${VERSION}" \
             -x javadoc \
             -x :kmp-grpc-core:compileNativeCode \
             -x :kmp-grpc-wellknown-ext:compileKotlinWasmJs \
+            -x :kmp-grpc-core:publishAndroidDebugPublicationToGitHubPackagesRepository \
             --no-daemon
