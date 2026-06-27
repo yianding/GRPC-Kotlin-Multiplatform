@@ -73,7 +73,7 @@ actual class Channel private constructor(val channel: ManagedChannel) {
                 if (trustManager != null) {
                     val sslContext = SSLContext.getInstance("TLS")
                     sslContext.init(null, arrayOf(trustManager), null)
-                    impl.sslSocketFactory(sslContext.socketFactory, trustManager)
+                    impl.sslSocketFactory(sslContext.socketFactory)
                 }
             }
             return Channel(impl.build())
