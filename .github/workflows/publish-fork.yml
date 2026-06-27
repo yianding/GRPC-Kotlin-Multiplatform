@@ -11,6 +11,10 @@ on:
 
 run-name: "Publish ${{ inputs.version || github.ref_name }}"
 
+permissions:
+  contents: read
+  packages: write
+
 env:
   VERSION: ${{ inputs.version || github.ref_name }}
 
