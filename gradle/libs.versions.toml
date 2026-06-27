@@ -1,5 +1,5 @@
 [versions]
-grpcKotlinMultiplatform = "2.0.1-fork"
+grpcKotlinMultiplatform = "2.0.2-fork"
 
 androidGradlePlugin = "8.11.2"
 

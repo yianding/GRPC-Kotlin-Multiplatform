@@ -255,29 +255,37 @@ pub extern "C" fn channel_builder_use_tls_config(
                         );
                     }
                     Some((endpoint, config)) => {
-                        // tonic's build_tls_connector uses uri.host() as the TLS ServerName.
-                        // http::Uri::host() returns IPv6 addresses WITH brackets like "[::1]",
-                        // but rustls ServerName::try_from("[::1]") fails because brackets are
-                        // not part of a valid IP address. Fix: strip brackets before applying TLS.
-                        let is_ipv6 = endpoint
+                        // http::Uri::host() returns IPv6 WITH brackets (e.g. "[::1]").
+                        // ServerName::try_from() rejects bracketed names, so we must
+                        // strip brackets before passing to config.domain_name().
+                        // Without domain_name(), tonic falls through to the same
+                        // ServerName::try_from(uri.host()) call, which also chokes
+                        // on brackets.
+                        let raw_host = endpoint
                             .uri()
                             .host()
-                            .map(|h| h.starts_with('['))
-                            .unwrap_or(false);
+                            .unwrap_or("")
+                            .to_string();
+                        let is_ipv6 = raw_host.contains(':');
                         let config = if is_ipv6 {
-                            let host = endpoint.uri().host().unwrap();
-                            let stripped = host
+                            let stripped = raw_host
                                 .trim_start_matches('[')
                                 .trim_end_matches(']');
                             config.domain_name(stripped)
                         } else {
                             config
                         };
-                        match endpoint.tls_config(config).ok() {
-                            None => {
-                                trace!("channel_builder_use_tls_config() -> could not set tls config");
+                        // Save URI string before endpoint is consumed by tls_config()
+                        let uri_string = endpoint.uri().to_string();
+                        match endpoint.tls_config(config) {
+                            Err(e) => {
+                                trace!("channel_builder_use_tls_config() -> could not set tls config, error: {} (raw_host: {}, is_ipv6: {})", e, raw_host, is_ipv6);
+                                // Recreate endpoint without TLS so build() doesn't return null
+                                if let Ok(ep) = Channel::from_shared(uri_string) {
+                                    b._endpoint = Some(ep);
+                                }
                             }
-                            Some(e) => {
+                            Ok(e) => {
                                 b._endpoint = Some(e);
                             }
                         }
