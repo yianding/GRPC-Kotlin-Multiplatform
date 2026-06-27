@@ -254,15 +254,34 @@ pub extern "C" fn channel_builder_use_tls_config(
                             "channel_builder_use_tls_config() -> either no builder or no config provided in option"
                         );
                     }
-                    Some((endpoint, config)) => match endpoint.tls_config(config).ok() {
-                        None => {
-                            trace!("channel_builder_use_tls_config() -> could not set tls config, falling back to plaintext endpoint");
-                            b._endpoint = Some(endpoint);
+                    Some((endpoint, config)) => {
+                        // tonic's build_tls_connector uses uri.host() as the TLS ServerName.
+                        // http::Uri::host() returns IPv6 addresses WITH brackets like "[::1]",
+                        // but rustls ServerName::try_from("[::1]") fails because brackets are
+                        // not part of a valid IP address. Fix: strip brackets before applying TLS.
+                        let is_ipv6 = endpoint
+                            .uri()
+                            .host()
+                            .map(|h| h.starts_with('['))
+                            .unwrap_or(false);
+                        let config = if is_ipv6 {
+                            let host = endpoint.uri().host().unwrap();
+                            let stripped = host
+                                .trim_start_matches('[')
+                                .trim_end_matches(']');
+                            config.domain_name(stripped)
+                        } else {
+                            config
+                        };
+                        match endpoint.tls_config(config).ok() {
+                            None => {
+                                trace!("channel_builder_use_tls_config() -> could not set tls config");
+                            }
+                            Some(e) => {
+                                b._endpoint = Some(e);
+                            }
                         }
-                        Some(e) => {
-                            b._endpoint = Some(e);
-                        }
-                    },
+                    }
                 }
             }
         }
