@@ -256,7 +256,8 @@ pub extern "C" fn channel_builder_use_tls_config(
                     }
                     Some((endpoint, config)) => match endpoint.tls_config(config).ok() {
                         None => {
-                            trace!("channel_builder_use_tls_config() -> could not set tls config");
+                            trace!("channel_builder_use_tls_config() -> could not set tls config, falling back to plaintext endpoint");
+                            b._endpoint = Some(endpoint);
                         }
                         Some(e) => {
                             b._endpoint = Some(e);
@@ -281,14 +282,18 @@ pub extern "C" fn channel_builder_build(builder: *mut RustChannelBuilder) -> *mu
 
     let channel = unsafe {
         match builder.as_mut().and_then(|b| b._endpoint.take()) {
-            Some(endpoint) => Box::into_raw(Box::new(RustChannel {
-                _channel: endpoint.connect_lazy(),
-            })),
-            None => null_mut(),
+            Some(endpoint) => {
+                trace!("channel_builder_build() -> built channel");
+                Box::into_raw(Box::new(RustChannel {
+                    _channel: endpoint.connect_lazy(),
+                }))
+            }
+            None => {
+                trace!("channel_builder_build() -> failed: no endpoint");
+                null_mut()
+            }
         }
     };
-
-    trace!("channel_builder_build() -> built channel");
 
     unsafe {
         drop(Box::from_raw(builder));
