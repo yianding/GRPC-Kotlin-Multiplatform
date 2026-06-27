@@ -15,53 +15,83 @@ env:
   VERSION: ${{ inputs.version || github.ref_name }}
 
 jobs:
-  publish:
-    name: Build + Publish
+  build-apple:
+    name: Build Apple
     runs-on: macos-latest
-    timeout-minutes: 120
-
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,x86_64-apple-darwin
+      - name: Build Apple native libs
+        run: |
+          cd kmp-grpc-native
+          for target in aarch64-apple-darwin aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios x86_64-apple-darwin; do
+            cargo build --target "$target" --profile dev
+          done
+      - name: Upload Apple artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-apple
+          path: kmp-grpc-native/target/
+          compression-level: 0
 
+  build-linux-win:
+    name: Build Linux + Windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu,x86_64-pc-windows-gnu
+      - uses: docker/setup-buildx-action@v3
+      - name: Install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+      - name: Build Linux + Windows native libs
+        run: |
+          cd kmp-grpc-native
+          for target in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu x86_64-pc-windows-gnu; do
+            cross build --target "$target" --profile dev
+          done
+      - name: Upload Linux/Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-linux-win
+          path: kmp-grpc-native/target/
+          compression-level: 0
+
+  publish:
+    name: Publish All
+    needs: [build-apple, build-linux-win]
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
       - uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Setup Colima (Docker for macOS runner)
-        uses: Kesin11/setup-colima@v1
+      - name: Download Apple artifacts
+        uses: actions/download-artifact@v4
         with:
-          colima-version: '0.10.3'
-
-      - uses: dtolnay/rust-toolchain@stable
+          name: native-apple
+          path: kmp-grpc-native/target/
+      - name: Download Linux/Windows artifacts
+        uses: actions/download-artifact@v4
         with:
-          targets: >-
-            aarch64-apple-darwin,aarch64-apple-ios,aarch64-apple-ios-sim,
-            x86_64-apple-ios,x86_64-apple-darwin,
-            x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu,
-            x86_64-pc-windows-gnu
+          name: native-linux-win
+          path: kmp-grpc-native/target/
 
-      - name: Install cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
-
-      - name: Build native libraries (all targets)
-        run: |
-          cd kmp-grpc-native
-          # Apple targets natively
-          for target in aarch64-apple-darwin aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios x86_64-apple-darwin; do
-            cargo build --target "$target" --profile dev
-          done
-          # Linux/Windows via cross (Docker via colima)
-          for target in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu x86_64-pc-windows-gnu; do
-            cross build --target "$target" --profile dev
-          done
-
-      - name: Publish to GitHub Packages
+      - name: Publish all to GitHub Packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ./gradlew publishAllPublicationsToGitHubPackagesRepository \
             -Pversion="${VERSION}" \
             -x javadoc \
+            -x :kmp-grpc-core:compileNativeCode \
             -x :kmp-grpc-wellknown-ext:compileKotlinWasmJs \
             --no-daemon
